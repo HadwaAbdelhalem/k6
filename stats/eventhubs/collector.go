@@ -152,7 +152,12 @@ func (c *Collector) pushMetrics() {
 		events = append(events, event)
 	}
 
-	c.client.SendBatch(c.ctx, eh.NewEventBatchIterator(events...))
+	c.logger.Debug("EventHub: Delivering...")
+	err := c.client.SendBatch(c.ctx, eh.NewEventBatchIterator(events...))
+	if err != nil {
+		c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
+	}
+	c.logger.Debug("EventHub: Delivered")
 }
 
 func (c *Collector) finish() {
