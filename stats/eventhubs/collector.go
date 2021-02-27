@@ -130,37 +130,42 @@ func (c *Collector) pushMetrics() {
 	for _, sample := range buffer {
 		env := jsonc.WrapSample(&sample)
 
-		data := HubEvent{
-			Time:        sample.Time,
-			Value:       sample.Value,
-			Tags:        sample.Tags,
-			Name:        sample.Metric.Name,
-			Contains:    sample.Metric.Contains.String(),
-			JSONContent: env,
+		c.logger.Debug("Metric Name is ", env.Metric)
+
+		if env.Metric == "http_reqs" {
+
+			data := HubEvent{
+				Time:        sample.Time,
+				Value:       sample.Value,
+				Tags:        sample.Tags,
+				Name:        sample.Metric.Name,
+				Contains:    sample.Metric.Contains.String(),
+				JSONContent: env,
+			}
+
+			m, _ := json.Marshal(data)
+
+			p := make(map[string]interface{})
+			for key, value := range sample.Tags.CloneTags() {
+				p[key] = value
+			}
+
+			event := eh.NewEvent(m)
+			event.Properties = p
+
+			c.logger.Debug("EventHub: Delivering...")
+			err := c.client.Send(c.ctx, event)
+
+			if err != nil {
+				c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
+				c.logger.WithFields(logrus.Fields{
+					"eventProperties": event.Properties,
+					"eventContents":   data.JSONContent,
+					"eventsize":       unsafe.Sizeof(*event),
+				}).Warning("sample details")
+			}
+			c.logger.Debug("EventHub: Delivered")
 		}
-
-		m, _ := json.Marshal(data)
-
-		p := make(map[string]interface{})
-		for key, value := range sample.Tags.CloneTags() {
-			p[key] = value
-		}
-
-		event := eh.NewEvent(m)
-		event.Properties = p
-
-		c.logger.Debug("EventHub: Delivering...")
-		err := c.client.Send(c.ctx, event)
-
-		if err != nil {
-			c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
-			c.logger.WithFields(logrus.Fields{
-				"eventProperties": event.Properties,
-				"eventContents":   data.JSONContent,
-				"eventsize":       unsafe.Sizeof(*event),
-			}).Warning("sample details")
-		}
-		c.logger.Debug("EventHub: Delivered")
 	}
 
 }
