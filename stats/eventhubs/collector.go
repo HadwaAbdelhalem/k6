@@ -152,7 +152,7 @@ func (c *Collector) pushMetrics() {
 
 		c.logger.WithFields(logrus.Fields{
 			"eventProperties": event.Properties,
-			"eventsize":       unsafe.Sizeof(&event),
+			"eventsize":       unsafe.Sizeof(*event),
 		}).Warning("sample event details")
 
 		events = append(events, event)
