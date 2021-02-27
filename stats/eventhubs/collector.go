@@ -156,6 +156,7 @@ func (c *Collector) pushMetrics() {
 		}).Warning("sample event details")
 
 		events = append(events, event)
+
 	}
 
 	c.logger.Debug("EventHub: Delivering...")
