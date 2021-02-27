@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/sirupsen/logrus"
 
@@ -150,11 +149,11 @@ func (c *Collector) pushMetrics() {
 		event := eh.NewEvent(m)
 		event.Properties = p
 
-		c.logger.WithFields(logrus.Fields{
-			"event":           event,
-			"eventProperties": event.Properties,
-			"eventsize":       unsafe.Sizeof(event),
-		}).Warning("sample event details")
+		//c.logger.WithFields(logrus.Fields{
+		//	"event":           event,
+		//	"eventProperties": event.Properties,
+		//	"eventsize":       unsafe.Sizeof(event),
+		//}).Warning("sample event details")
 
 		events = append(events, event)
 	}
