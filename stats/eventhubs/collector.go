@@ -121,12 +121,11 @@ func (c *Collector) pushMetrics() {
 	if len(c.buffer) == 0 {
 		return
 	}
+
 	c.bufferLock.Lock()
 	buffer := c.buffer
 	c.buffer = nil
 	c.bufferLock.Unlock()
-
-	events := make([]*eh.Event, 0)
 
 	for _, sample := range buffer {
 		env := jsonc.WrapSample(&sample)
@@ -150,21 +149,20 @@ func (c *Collector) pushMetrics() {
 		event := eh.NewEvent(m)
 		event.Properties = p
 
-		c.logger.WithFields(logrus.Fields{
-			"eventProperties": event.Properties,
-			"eventsize":       unsafe.Sizeof(*event),
-		}).Warning("sample event details")
+		c.logger.Debug("EventHub: Delivering...")
+		err := c.client.Send(c.ctx, event)
 
-		events = append(events, event)
-
+		if err != nil {
+			c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
+			c.logger.WithFields(logrus.Fields{
+				"eventProperties": event.Properties,
+				"eventContents":   data.JSONContent,
+				"eventsize":       unsafe.Sizeof(*event),
+			}).Warning("sample details")
+		}
+		c.logger.Debug("EventHub: Delivered")
 	}
 
-	c.logger.Debug("EventHub: Delivering...")
-	err := c.client.SendBatch(c.ctx, eh.NewEventBatchIterator(events...))
-	if err != nil {
-		c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
-	}
-	c.logger.Debug("EventHub: Delivered")
 }
 
 func (c *Collector) finish() {
