@@ -135,7 +135,7 @@ func (c *Collector) pushMetrics() {
 		if env.Metric == "http_reqs" {
 
 			data := HubEvent{
-				Time:        sample.Time,
+				Time:        time.Now(),
 				Value:       sample.Value,
 				Tags:        sample.Tags,
 				Name:        sample.Metric.Name,
