@@ -154,7 +154,9 @@ func (c *Collector) pushMetrics() {
 			event.Properties = p
 
 			c.logger.Debug("EventHub: Delivering...")
-			err := c.client.Send(c.ctx, event)
+			senderctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+
+			err := c.client.Send(senderctx, event)
 
 			if err != nil {
 				c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
@@ -165,6 +167,7 @@ func (c *Collector) pushMetrics() {
 				}).Warning("sample details")
 			}
 			c.logger.Debug("EventHub: Delivered")
+			cancel()
 		}
 	}
 
