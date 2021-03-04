@@ -3,7 +3,7 @@ module github.com/loadimpact/k6
 go 1.14
 
 require (
-	github.com/Azure/azure-event-hubs-go/v3 v3.3.1
+	github.com/Azure/azure-event-hubs-go/v3 v3.3.6
 	github.com/Azure/go-ntlmssp v0.0.0-20180810175552-4a21cbd618b4
 	github.com/DataDog/datadog-go v0.0.0-20180330214955-e67964b4021a
 	github.com/GeertJohan/go.rice v0.0.0-20170420135705-c02ca9a983da
@@ -70,7 +70,7 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
 	github.com/zyedidia/highlight v0.0.0-20170330143449-201131ce5cf5
-	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
+	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
 	golang.org/x/net v0.0.0-20201008223702-a5fa9d4b7c91
 	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f // indirect
 	golang.org/x/text v0.3.3
