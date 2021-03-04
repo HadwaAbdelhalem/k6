@@ -81,7 +81,8 @@ func (c *Collector) Link() string {
 // Run is called in a goroutine and starts the collector. Should commit samples to the backend
 // at regular intervals and when the context is terminated.
 func (c *Collector) Run(ctx context.Context) {
-	c.ctx = ctx
+	//c.ctx = ctx
+	c.ctx = context.Background()
 
 	ticker := time.NewTicker(time.Duration(c.config.PushInterval.Duration))
 
