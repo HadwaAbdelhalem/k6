@@ -128,6 +128,9 @@ func (c *Collector) pushMetrics() {
 	c.buffer = nil
 	c.bufferLock.Unlock()
 
+	startTime := time.Now()
+	fmt.Printf("PushMertics Start- buffer len (%d) - time (%s)......\n", len(buffer), startTime.Format("2006.01.02 15:04:05"))
+
 	for _, sample := range buffer {
 		env := jsonc.WrapSample(&sample)
 
@@ -171,6 +174,8 @@ func (c *Collector) pushMetrics() {
 			cancel()
 		}
 	}
+	endTime := time.Now()
+	fmt.Printf("PushMertics Start- buffer len (%d) - time (%s)......\n", len(buffer), endTime.Format("2006.01.02 15:04:05"))
 
 }
 
