@@ -112,10 +112,11 @@ type HubEvent struct {
 // the context for Run() is valid, but should defer as much work as possible to Run().
 func (c *Collector) Collect(sampleContainers []stats.SampleContainer) {
 	c.bufferLock.Lock()
+	defer c.bufferLock.Unlock()
 	for _, sampleContainer := range sampleContainers {
 		c.buffer = append(c.buffer, sampleContainer.GetSamples()...)
 	}
-	c.bufferLock.Unlock()
+	//c.bufferLock.Unlock()
 }
 
 func (c *Collector) pushMetrics() {
@@ -175,7 +176,7 @@ func (c *Collector) pushMetrics() {
 		}
 	}
 	endTime := time.Now()
-	fmt.Printf("PushMertics Start- buffer len (%d) - time (%s)......\n", len(buffer), endTime.Format("2006.01.02 15:04:05"))
+	fmt.Printf("PushMertics end- buffer len (%d) - time (%s)......\n", len(buffer), endTime.Format("2006.01.02 15:04:05"))
 
 }
 
