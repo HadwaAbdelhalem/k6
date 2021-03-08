@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/sirupsen/logrus"
 
@@ -132,6 +131,8 @@ func (c *Collector) pushMetrics() {
 	startTime := time.Now()
 	fmt.Printf("PushMertics Start- buffer len (%d) - time (%s)......\n", len(buffer), startTime.Format("2006.01.02 15:04:05"))
 
+	events := make([]*eh.Event, 0)
+
 	for _, sample := range buffer {
 		env := jsonc.WrapSample(&sample)
 
@@ -158,23 +159,38 @@ func (c *Collector) pushMetrics() {
 			event := eh.NewEvent(m)
 			event.Properties = p
 
-			c.logger.Debug("EventHub: Delivering...")
-			senderctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+			events = append(events, event)
 
-			err := c.client.Send(senderctx, event)
+			//c.logger.Debug("EventHub: Delivering...")
+			//senderctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
 
-			if err != nil {
-				c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
-				c.logger.WithFields(logrus.Fields{
-					"eventProperties": event.Properties,
-					"eventContents":   data.JSONContent,
-					"eventsize":       unsafe.Sizeof(*event),
-				}).Warning("sample details")
-			}
-			c.logger.Debug("EventHub: Delivered")
-			cancel()
+			//err := c.client.Send(senderctx, event)
+
+			//if err != nil {
+			//	c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
+			//	c.logger.WithFields(logrus.Fields{
+			//		"eventProperties": event.Properties,
+			//		"eventContents":   data.JSONContent,
+			//		"eventsize":       unsafe.Sizeof(*event),
+			//	}).Warning("sample details")
+			//}
+			//c.logger.Debug("EventHub: Delivered")
+			//cancel()
+
 		}
 	}
+
+	c.logger.Debug("EventHub: Delivering...")
+	senderctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+
+	err := c.client.SendBatch(senderctx, eh.NewEventBatchIterator(events...))
+
+	if err != nil {
+		c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
+	}
+	c.logger.Debug("EventHub: Delivered")
+	cancel()
+
 	endTime := time.Now()
 	fmt.Printf("PushMertics end- buffer len (%d) - time (%s)......\n", len(buffer), endTime.Format("2006.01.02 15:04:05"))
 
