@@ -37,7 +37,7 @@ type Config struct {
 func NewConfig() Config {
 	return Config{
 		ConnectionString: null.NewString("", false),
-		PushInterval:     types.NewNullDuration(1*time.Millisecond, false),
+		PushInterval:     types.NewNullDuration(1*time.Second, false),
 	}
 }
 
