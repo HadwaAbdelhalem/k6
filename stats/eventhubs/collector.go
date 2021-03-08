@@ -137,7 +137,7 @@ func (c *Collector) pushMetrics() {
 
 		c.logger.Debug("Metric Name is ", env.Metric)
 
-		if env.Metric == "http_reqs" {
+		if env.Metric == "http_reqs" || env.Metric == "http_reqs_duration" {
 
 			data := HubEvent{
 				Time:        time.Now(),
