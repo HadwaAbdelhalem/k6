@@ -80,7 +80,6 @@ func (c *Collector) Link() string {
 // Run is called in a goroutine and starts the collector. Should commit samples to the backend
 // at regular intervals and when the context is terminated.
 func (c *Collector) Run(ctx context.Context) {
-	//c.ctx = ctx
 	c.ctx = context.Background()
 
 	ticker := time.NewTicker(time.Duration(c.config.PushInterval.Duration))
@@ -131,7 +130,6 @@ func (c *Collector) pushMetrics() {
 	var wg sync.WaitGroup
 	wg.Add(sliceLength)
 
-	//for _, sample := range buffer {
 	for i := 0; i < sliceLength; i++ {
 		go func(i int) {
 			defer wg.Done()
@@ -165,7 +163,7 @@ func (c *Collector) pushMetrics() {
 				err := c.client.Send(senderctx, event)
 
 				if err != nil {
-					c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
+					c.logger.WithError(err).Error("Eventhub: failed to Send message.")
 				}
 				c.logger.Debug("EventHub: Delivered")
 				cancel()
