@@ -115,7 +115,6 @@ func (c *Collector) Collect(sampleContainers []stats.SampleContainer) {
 	for _, sampleContainer := range sampleContainers {
 		c.buffer = append(c.buffer, sampleContainer.GetSamples()...)
 	}
-	//c.bufferLock.Unlock()
 }
 
 func (c *Collector) pushMetrics() {
@@ -128,72 +127,51 @@ func (c *Collector) pushMetrics() {
 	c.buffer = nil
 	c.bufferLock.Unlock()
 
-	startTime := time.Now()
-	fmt.Printf("PushMertics Start- buffer len (%d) - time (%s)......\n", len(buffer), startTime.Format("2006.01.02 15:04:05"))
+	sliceLength := len(buffer)
+	var wg sync.WaitGroup
+	wg.Add(sliceLength)
 
-	events := make([]*eh.Event, 0)
+	//for _, sample := range buffer {
+	for i := 0; i < sliceLength; i++ {
+		go func(i int) {
+			defer wg.Done()
+			sample := buffer[i]
+			env := jsonc.WrapSample(&sample)
 
-	for _, sample := range buffer {
-		env := jsonc.WrapSample(&sample)
+			c.logger.Debug("Metric Name is ", env.Metric)
 
-		c.logger.Debug("Metric Name is ", env.Metric)
+			if env.Metric == "http_reqs" || env.Metric == "http_req_duration" {
+				data := HubEvent{
+					Time:        time.Now(),
+					Value:       sample.Value,
+					Tags:        sample.Tags,
+					Name:        sample.Metric.Name,
+					Contains:    sample.Metric.Contains.String(),
+					JSONContent: env,
+				}
+				m, _ := json.Marshal(data)
 
-		if env.Metric == "http_reqs" || env.Metric == "http_req_duration" {
+				p := make(map[string]interface{})
+				for key, value := range sample.Tags.CloneTags() {
+					p[key] = value
+				}
 
-			data := HubEvent{
-				Time:        time.Now(),
-				Value:       sample.Value,
-				Tags:        sample.Tags,
-				Name:        sample.Metric.Name,
-				Contains:    sample.Metric.Contains.String(),
-				JSONContent: env,
+				event := eh.NewEvent(m)
+				event.Properties = p
+
+				c.logger.Debug("EventHub: Delivering...")
+				senderctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+
+				err := c.client.Send(senderctx, event)
+
+				if err != nil {
+					c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
+				}
+				c.logger.Debug("EventHub: Delivered")
+				cancel()
 			}
-
-			m, _ := json.Marshal(data)
-
-			p := make(map[string]interface{})
-			for key, value := range sample.Tags.CloneTags() {
-				p[key] = value
-			}
-
-			event := eh.NewEvent(m)
-			event.Properties = p
-
-			events = append(events, event)
-
-			//c.logger.Debug("EventHub: Delivering...")
-			//senderctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
-
-			//err := c.client.Send(senderctx, event)
-
-			//if err != nil {
-			//	c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
-			//	c.logger.WithFields(logrus.Fields{
-			//		"eventProperties": event.Properties,
-			//		"eventContents":   data.JSONContent,
-			//		"eventsize":       unsafe.Sizeof(*event),
-			//	}).Warning("sample details")
-			//}
-			//c.logger.Debug("EventHub: Delivered")
-			//cancel()
-
-		}
+		}(i)
 	}
-
-	c.logger.Debug("EventHub: Delivering...")
-	senderctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
-
-	err := c.client.SendBatch(senderctx, eh.NewEventBatchIterator(events...))
-
-	if err != nil {
-		c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
-	}
-	c.logger.Debug("EventHub: Delivered")
-	cancel()
-
-	endTime := time.Now()
-	fmt.Printf("PushMertics end- buffer len (%d) - time (%s)......\n", len(buffer), endTime.Format("2006.01.02 15:04:05"))
-
 }
 
 func (c *Collector) finish() {
