@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/sirupsen/logrus"
 
@@ -81,7 +80,6 @@ func (c *Collector) Link() string {
 // Run is called in a goroutine and starts the collector. Should commit samples to the backend
 // at regular intervals and when the context is terminated.
 func (c *Collector) Run(ctx context.Context) {
-	//c.ctx = ctx
 	c.ctx = context.Background()
 
 	ticker := time.NewTicker(time.Duration(c.config.PushInterval.Duration))
@@ -112,10 +110,10 @@ type HubEvent struct {
 // the context for Run() is valid, but should defer as much work as possible to Run().
 func (c *Collector) Collect(sampleContainers []stats.SampleContainer) {
 	c.bufferLock.Lock()
+	defer c.bufferLock.Unlock()
 	for _, sampleContainer := range sampleContainers {
 		c.buffer = append(c.buffer, sampleContainer.GetSamples()...)
 	}
-	c.bufferLock.Unlock()
 }
 
 func (c *Collector) pushMetrics() {
@@ -128,50 +126,50 @@ func (c *Collector) pushMetrics() {
 	c.buffer = nil
 	c.bufferLock.Unlock()
 
-	for _, sample := range buffer {
-		env := jsonc.WrapSample(&sample)
+	sliceLength := len(buffer)
+	var wg sync.WaitGroup
+	wg.Add(sliceLength)
 
-		c.logger.Debug("Metric Name is ", env.Metric)
+	for i := 0; i < sliceLength; i++ {
+		go func(i int) {
+			defer wg.Done()
+			sample := buffer[i]
+			env := jsonc.WrapSample(&sample)
 
-		if env.Metric == "http_reqs" || env.Metric == "http_req_duration" {
+			c.logger.Debug("Metric Name is ", env.Metric)
 
-			data := HubEvent{
-				Time:        time.Now(),
-				Value:       sample.Value,
-				Tags:        sample.Tags,
-				Name:        sample.Metric.Name,
-				Contains:    sample.Metric.Contains.String(),
-				JSONContent: env,
+			if env.Metric == "http_reqs" || env.Metric == "http_req_duration" {
+				data := HubEvent{
+					Time:        time.Now(),
+					Value:       sample.Value,
+					Tags:        sample.Tags,
+					Name:        sample.Metric.Name,
+					Contains:    sample.Metric.Contains.String(),
+					JSONContent: env,
+				}
+				m, _ := json.Marshal(data)
+
+				p := make(map[string]interface{})
+				for key, value := range sample.Tags.CloneTags() {
+					p[key] = value
+				}
+
+				event := eh.NewEvent(m)
+				event.Properties = p
+
+				c.logger.Debug("EventHub: Delivering...")
+				senderctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
+
+				err := c.client.Send(senderctx, event)
+
+				if err != nil {
+					c.logger.WithError(err).Error("Eventhub: failed to Send message.")
+				}
+				c.logger.Debug("EventHub: Delivered")
+				cancel()
 			}
-
-			m, _ := json.Marshal(data)
-
-			p := make(map[string]interface{})
-			for key, value := range sample.Tags.CloneTags() {
-				p[key] = value
-			}
-
-			event := eh.NewEvent(m)
-			event.Properties = p
-
-			c.logger.Debug("EventHub: Delivering...")
-			senderctx, cancel := context.WithTimeout(c.ctx, 10*time.Second)
-
-			err := c.client.Send(senderctx, event)
-
-			if err != nil {
-				c.logger.WithError(err).Error("Eventhub: failed to sendBatch message.")
-				c.logger.WithFields(logrus.Fields{
-					"eventProperties": event.Properties,
-					"eventContents":   data.JSONContent,
-					"eventsize":       unsafe.Sizeof(*event),
-				}).Warning("sample details")
-			}
-			c.logger.Debug("EventHub: Delivered")
-			cancel()
-		}
+		}(i)
 	}
-
 }
 
 func (c *Collector) finish() {
