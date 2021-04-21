@@ -158,7 +158,7 @@ func (c *Collector) pushMetrics() {
 				event.Properties = p
 
 				c.logger.Debug("EventHub: Delivering...")
-				senderctx, cancel := context.WithTimeout(c.ctx, 180*time.Second)
+				senderctx, cancel := context.WithTimeout(c.ctx, 360*time.Second)
 
 				err := c.client.Send(senderctx, event)
 
